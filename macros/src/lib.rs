@@ -17,11 +17,11 @@
 //!
 //! 		/// Adds two numbers and returns a result
 //! 		#[rpc(name = "add")]
-//! 		fn add(&self, u64, u64) -> Result<u64>;
+//! 		fn add(&self, _a: u64, _b: u64) -> Result<u64>;
 //!
 //! 		/// Performs asynchronous operation
 //! 		#[rpc(name = "callAsync")]
-//! 		fn call(&self, u64) -> FutureResult<String, Error>;
+//! 		fn call(&self, _p: u64) -> FutureResult<String, Error>;
 //! 	}
 //! }
 //! struct RpcImpl;
@@ -49,10 +49,6 @@
 
 #![warn(missing_docs)]
 
-pub extern crate jsonrpc_core;
-pub extern crate jsonrpc_pubsub;
-extern crate serde;
-
 mod auto_args;
 mod delegates;
 mod util;
@@ -60,11 +56,11 @@ mod util;
 pub mod pubsub;
 
 #[doc(hidden)]
-pub use auto_args::{WrapAsync, WrapMeta, WrapSubscribe};
+pub use crate::auto_args::{WrapAsync, WrapMeta, WrapSubscribe};
 
 #[doc(hidden)]
 pub use serde::{de::DeserializeOwned, Serialize};
 
-pub use auto_args::Trailing;
-pub use delegates::IoDelegate;
-pub use util::to_value;
+pub use crate::auto_args::Trailing;
+pub use crate::delegates::IoDelegate;
+pub use crate::util::to_value;

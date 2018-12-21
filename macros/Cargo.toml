@@ -6,17 +6,18 @@ license = "MIT"
 name = "jsonrpc-macros"
 version = "9.0.0"
 authors = ["rphmeier <robert@parity.io>"]
+edition = "2018"
 keywords = ["jsonrpc", "json-rpc", "json", "rpc", "macros"]
 documentation = "https://paritytech.github.io/jsonrpc/jsonrpc_macros/index.html"
 
 [dependencies]
 serde = "1.0"
-jsonrpc-core = { version = "9.0", path = "../core" }
-jsonrpc-pubsub = { version = "9.0", path = "../pubsub" }
+jsonrpc-core = "9.0"
+jsonrpc-pubsub = "9.0"
 
 [dev-dependencies]
 serde_json = "1.0"
-jsonrpc-tcp-server = { version = "9.0", path = "../tcp" }
+jsonrpc-tcp-server = "9.0"
 
 [badges]
 travis-ci = { repository = "paritytech/jsonrpc", branch = "master"}
