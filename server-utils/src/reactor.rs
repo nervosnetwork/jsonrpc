@@ -6,7 +6,9 @@ use std::sync::mpsc;
 use tokio;
 use num_cpus;
 
-use core::futures::{self, Future};
+use core::futures::{self, sync::oneshot, Future};
+
+
 
 /// Possibly uninitialized event loop executor.
 #[derive(Debug)]
@@ -63,16 +65,23 @@ impl Executor {
 	}
 
 	/// Closes underlying event loop (if any!).
-	pub fn close(self) {
-		if let Executor::Spawned(eloop) = self {
-			eloop.close()
-		}
-	}
+	// pub fn close(self) {
+	// 	if let Executor::Spawned(eloop) = self {
+	// 		eloop.close()
+	// 	}
+	// }
 
 	/// Wait for underlying event loop to finish (if any!).
 	pub fn wait(self) {
 		if let Executor::Spawned(eloop) = self {
 			let _ = eloop.wait();
+		}
+	}
+
+	pub fn take_close(&mut self) -> Option<oneshot::Sender<()>> {
+		match *self {
+			Executor::Shared(_) => None,
+			Executor::Spawned(ref mut eloop) => eloop.take_close(),
 		}
 	}
 }
@@ -81,20 +90,19 @@ impl Executor {
 #[derive(Debug)]
 pub struct RpcEventLoop {
 	executor: tokio::runtime::TaskExecutor,
-	close: Option<futures::Complete<()>>,
+	close: Option<oneshot::Sender<()>>,
 	handle: Option<thread::JoinHandle<()>>,
 }
 
-impl Drop for RpcEventLoop {
-	fn drop(&mut self) {
-		self.close.take().map(|v| v.send(()));
-	}
-}
 
 impl RpcEventLoop {
 	/// Spawns a new thread with the `EventLoop`.
 	pub fn spawn() -> io::Result<Self> {
 		RpcEventLoop::with_name(None)
+	}
+
+	pub fn take_close(&mut self) -> Option<oneshot::Sender<()>> {
+		self.close.take()
 	}
 
 	/// Spawns a new named thread with the `EventLoop`.
@@ -155,12 +163,5 @@ impl RpcEventLoop {
 	/// Blocks current thread and waits until the event loop is finished.
 	pub fn wait(mut self) -> thread::Result<()> {
 		self.handle.take().expect("Handle is always set before self is consumed.").join()
-	}
-
-	/// Finishes this event loop.
-	pub fn close(mut self) {
-		let _ = self.close.take().expect("Close is always set before self is consumed.").send(()).map_err(|e| {
-			warn!("Event Loop is already finished. {:?}", e);
-		});
 	}
 }
