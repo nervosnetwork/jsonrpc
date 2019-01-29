@@ -375,11 +375,11 @@ impl<M: jsonrpc::Metadata, S: jsonrpc::Middleware<M>> ServerBuilder<M, S> {
 		let reuse_port = self.threads > 1;
 
 		let (local_addr_tx, local_addr_rx) = mpsc::channel();
-		let (close, shutdown_signal) = oneshot::channel();
-		let eloop = self.executor.init_with_name("http.worker0")?;
+		let mut eloop = self.executor.init_with_name("http.worker0")?;
+		let close = eloop.take_close().expect("eloop initialized");
 		let req_max_size = self.max_request_body_size;
 		serve(
-			(shutdown_signal, local_addr_tx),
+			local_addr_tx,
 			eloop.executor(),
 			addr.to_owned(),
 			cors_domains.clone(),
@@ -396,10 +396,10 @@ impl<M: jsonrpc::Metadata, S: jsonrpc::Middleware<M>> ServerBuilder<M, S> {
 		);
 		let handles = (0..self.threads - 1).map(|i| {
 			let (local_addr_tx, local_addr_rx) = mpsc::channel();
-			let (close, shutdown_signal) = oneshot::channel();
-			let eloop = UninitializedExecutor::Unspawned.init_with_name(format!("http.worker{}", i + 1))?;
+			let mut eloop = UninitializedExecutor::Unspawned.init_with_name(format!("http.worker{}", i + 1))?;
+			let close = eloop.take_close().expect("eloop initialized");
 			serve(
-				(shutdown_signal, local_addr_tx),
+				local_addr_tx,
 				eloop.executor(),
 				addr.to_owned(),
 				cors_domains.clone(),
@@ -442,7 +442,7 @@ fn recv_address(local_addr_rx: mpsc::Receiver<io::Result<SocketAddr>>) -> io::Re
 }
 
 fn serve<M: jsonrpc::Metadata, S: jsonrpc::Middleware<M>>(
-	signals: (oneshot::Receiver<()>, mpsc::Sender<io::Result<SocketAddr>>),
+	local_addr_tx: mpsc::Sender<io::Result<SocketAddr>>,
 	executor: tokio::runtime::TaskExecutor,
 	addr: SocketAddr,
 	cors_domains: CorsDomains,
@@ -457,7 +457,6 @@ fn serve<M: jsonrpc::Metadata, S: jsonrpc::Middleware<M>>(
 	reuse_port: bool,
 	max_request_body_size: usize,
 ) {
-	let (shutdown_signal, local_addr_tx) = signals;
 	executor.spawn(future::lazy(move || {
 		let handle = tokio::reactor::Handle::current();
 
@@ -526,9 +525,6 @@ fn serve<M: jsonrpc::Metadata, S: jsonrpc::Middleware<M>>(
 				.map_err(|e| {
 					warn!("Incoming streams error, closing sever: {:?}", e);
 				})
-				.select(shutdown_signal.map_err(|e| {
-					debug!("Shutdown signaller dropped, closing server: {:?}", e);
-				}))
 				.map(|_| ())
 				.map_err(|_| ())
 		})
@@ -565,10 +561,6 @@ impl Server {
 		&self.address
 	}
 
-	pub fn take_close(&mut self) -> Option<Vec<oneshot::Sender<()>>> {
-		self.close.take()
-	}
-
 	/// Closes the server.
 	// pub fn close(mut self) {
 	// 	for close in self.close.take().expect(PROOF) {
@@ -585,13 +577,5 @@ impl Server {
 		for executor in self.executor.take().expect(PROOF) {
 			executor.wait();
 		}
-	}
-}
-
-impl Drop for Server {
-	fn drop(&mut self) {
-		self.executor.take().map(|executors| {
-			for executor in executors { executor.close(); }
-		});
 	}
 }
