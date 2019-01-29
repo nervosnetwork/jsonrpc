@@ -565,16 +565,20 @@ impl Server {
 		&self.address
 	}
 
-	/// Closes the server.
-	pub fn close(mut self) {
-		for close in self.close.take().expect(PROOF) {
-			let _ = close.send(());
-		}
-
-		for executor in self.executor.take().expect(PROOF) {
-			executor.close();
-		}
+	pub fn take_close(&mut self) -> Option<Vec<oneshot::Sender<()>>> {
+		self.close.take()
 	}
+
+	/// Closes the server.
+	// pub fn close(mut self) {
+	// 	for close in self.close.take().expect(PROOF) {
+	// 		let _ = close.send(());
+	// 	}
+
+	// 	for executor in self.executor.take().expect(PROOF) {
+	// 		executor.close();
+	// 	}
+	// }
 
 	/// Will block, waiting for the server to finish.
 	pub fn wait(mut self) {
