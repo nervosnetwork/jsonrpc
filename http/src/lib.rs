@@ -561,6 +561,10 @@ impl Server {
 		&self.address
 	}
 
+	pub fn take_close(&mut self) -> Option<Vec<oneshot::Sender<()>>> {
+		self.close.take()
+	}
+
 	/// Closes the server.
 	// pub fn close(mut self) {
 	// 	for close in self.close.take().expect(PROOF) {
