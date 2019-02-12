@@ -12,11 +12,12 @@ version = "10.0.1"
 
 [dependencies]
 hyper = "0.12"
-jsonrpc-core = { version = "10.0", path = "../core" }
-jsonrpc-server-utils = { version = "10.0", path = "../server-utils" }
+jsonrpc-core = "10.0"
+jsonrpc-server-utils = "10.0"
 log = "0.4"
 net2 = "0.2"
 unicase = "2.0"
+tokio = "0.1"
 
 [badges]
 travis-ci = { repository = "paritytech/jsonrpc", branch = "master"}
